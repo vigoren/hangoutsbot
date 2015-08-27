@@ -4,6 +4,8 @@ import hangups
 
 import plugins
 
+import hangups_constants
+
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +51,7 @@ def _botkeeper_list(bot, conv_id):
 @asyncio.coroutine
 def _check_if_admin_added_me(bot, event, command):
     bot_id = bot._user_list._self_user.id_
-    if event.conv_event.type_ == hangups.MembershipChangeType.JOIN:
+    if event.conv_event.type_ == hangups_constants.MembershipChangeType.JOIN:
         if bot_id in event.conv_event.participant_ids:
             # bot was part of the event
             initiator_user_id = event.user_id.chat_id

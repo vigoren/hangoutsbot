@@ -3,8 +3,6 @@ import appdirs, argparse, asyncio, gettext, logging, logging.config, os, shutil,
 
 import hangups
 
-from hangups.schemas import OffTheRecordStatus
-
 import config
 import handlers
 import version
@@ -15,6 +13,8 @@ import tagging
 import hooks
 import sinks
 import plugins
+
+import hangups_constants
 
 from exceptions import HangupsBotExceptions
 from event import (TypingEvent, WatermarkEvent, ConversationEvent)
@@ -716,9 +716,9 @@ class HangupsBot(object):
                     conversation_id))
 
         if context["history"]:
-            otr_status = OffTheRecordStatus.ON_THE_RECORD
+            otr_status = hangups_constants.OffTheRecordStatus.ON_THE_RECORD
         else:
-            otr_status = OffTheRecordStatus.OFF_THE_RECORD
+            otr_status = hangups_constants.OffTheRecordStatus.OFF_THE_RECORD
 
         broadcast_list = [(conversation_id, segments)]
 

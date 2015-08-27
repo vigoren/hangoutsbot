@@ -6,7 +6,8 @@ import json, random
 
 from hangups import exceptions
 from hangups.client import Client as class_hangups_client
-from hangups.schemas import OffTheRecordStatus
+
+import hangups_constants
 
 
 logger = logging.getLogger(__name__)
@@ -35,10 +36,10 @@ def replace_method(the_class, class_method_name, new_method):
 @asyncio.coroutine
 def otr_monkeypatch_removeuser(self, conversation_id, otr_status=None):
     if otr_status is None:
-        otr_status = OffTheRecordStatus.ON_THE_RECORD # default
+        otr_status = hangups_constants.OffTheRecordStatus.ON_THE_RECORD # default
         try:
             if not bot.conversations.catalog[conversation_id]["history"]:
-                otr_status = OffTheRecordStatus.OFF_THE_RECORD
+                otr_status = hangups_constants.OffTheRecordStatus.OFF_THE_RECORD
         except KeyError:
             logger.warning("missing history flag: {}".format(conversation_id))
     logger.debug("hangups.client.Client.removeuser, convid={} OTR={}".format(conversation_id, otr_status))
@@ -67,10 +68,10 @@ def otr_monkeypatch_removeuser(self, conversation_id, otr_status=None):
 @asyncio.coroutine
 def otr_monkeypatched_adduser(self, conversation_id, chat_id_list, otr_status=None):
     if otr_status is None:
-        otr_status = OffTheRecordStatus.ON_THE_RECORD # default
+        otr_status = hangups_constants.OffTheRecordStatus.ON_THE_RECORD # default
         try:
             if not bot.conversations.catalog[conversation_id]["history"]:
-                otr_status = OffTheRecordStatus.OFF_THE_RECORD
+                otr_status = hangups_constants.OffTheRecordStatus.OFF_THE_RECORD
         except KeyError:
             logger.warning("missing history flag: {}".format(conversation_id))
     logger.debug("hangups.client.Client.adduser, convid={} OTR={}".format(conversation_id, otr_status))

@@ -11,6 +11,8 @@ import hangups
 
 import plugins
 
+import hangups_constants
+
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,7 @@ def _watch_new_adds(bot, event, command):
     names = ', '.join([user.full_name for user in event_users])
 
     # JOIN
-    if event.conv_event.type_ == hangups.MembershipChangeType.JOIN:
+    if event.conv_event.type_ == hangups_constants.MembershipChangeType.JOIN:
         # Check if the user who added people is a mod or admin
         admins_list = bot.get_config_suboption(event.conv_id, 'admins')
         if event.user_id.chat_id in admins_list:

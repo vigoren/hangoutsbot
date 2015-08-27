@@ -4,6 +4,8 @@ import hangups
 
 import plugins
 
+import hangups_constants
+
 
 logger = logging.getLogger(__name__)
 
@@ -227,7 +229,7 @@ def _handle_syncrooms_membership_change(bot, event, command):
 
     syncroom_name = '<b>' + bot.conversations.get_name(event.conv) + '</b>'
 
-    if event.conv_event.type_ == hangups.MembershipChangeType.JOIN:
+    if event.conv_event.type_ == hangups_constants.MembershipChangeType.JOIN:
         # JOIN a specific room
 
         logger.info("{} user(s) added to {}".format(len(event_users), event.conv_id))

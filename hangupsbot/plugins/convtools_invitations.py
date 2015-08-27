@@ -4,6 +4,8 @@ import hangups
 
 import plugins
 
+import hangups_constants
+
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +108,7 @@ def _issue_invite_on_exit(bot, event, command):
     if bot.get_config_suboption(event.conv_id, 'disable_invites_on_exit'):
         return
 
-    if event.conv_event.type_ == hangups.MembershipChangeType.LEAVE:
+    if event.conv_event.type_ == hangups_constants.MembershipChangeType.LEAVE:
         event_users = [event.conv.get_user(user_id) for user_id
                        in event.conv_event.participant_ids]
         users_leaving = [user.id_.chat_id for user in event_users]
