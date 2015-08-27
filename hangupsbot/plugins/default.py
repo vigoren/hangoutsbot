@@ -4,6 +4,8 @@ import hangups
 
 import plugins
 
+import hangups_constants
+
 from utils import text_to_segments, simple_parse_to_segments, remove_accents
 from commands import command
 
@@ -159,7 +161,7 @@ def user(bot, event, *args):
 
     segments = [hangups.ChatMessageSegment(_('results for user named "{}":').format(search),
                                            is_bold=True),
-                hangups.ChatMessageSegment('\n', hangups.SegmentType.LINE_BREAK)]
+                hangups.ChatMessageSegment('\n', hangups_constants.SegmentType.LINE_BREAK)]
 
     all_known_users = {}
     for chat_id in bot.memory["user_data"]:
@@ -178,15 +180,15 @@ def user(bot, event, *args):
             or search_upper in remove_accents(unspaced_upper) ):
 
             link = 'https://plus.google.com/u/0/{}/about'.format(u.id_.chat_id)
-            segments.append(hangups.ChatMessageSegment(u.full_name, hangups.SegmentType.LINK,
+            segments.append(hangups.ChatMessageSegment(u.full_name, hangups_constants.SegmentType.LINK,
                                                        link_target=link))
             if u.emails:
                 segments.append(hangups.ChatMessageSegment(' ('))
-                segments.append(hangups.ChatMessageSegment(u.emails[0], hangups.SegmentType.LINK,
+                segments.append(hangups.ChatMessageSegment(u.emails[0], hangups_constants.SegmentType.LINK,
                                                            link_target='mailto:{}'.format(u.emails[0])))
                 segments.append(hangups.ChatMessageSegment(')'))
             segments.append(hangups.ChatMessageSegment(' ... {}'.format(u.id_.chat_id)))
-            segments.append(hangups.ChatMessageSegment('\n', hangups.SegmentType.LINE_BREAK))
+            segments.append(hangups.ChatMessageSegment('\n', hangups_constants.SegmentType.LINE_BREAK))
 
     yield from bot.coro_send_message(event.conv, segments)
 
@@ -346,7 +348,7 @@ def config(bot, event, cmd=None, *args):
     config_path = ' '.join(k for k in ['config'] + config_args)
     segments = [hangups.ChatMessageSegment('{}:'.format(config_path),
                                            is_bold=True),
-                hangups.ChatMessageSegment('\n', hangups.SegmentType.LINE_BREAK)]
+                hangups.ChatMessageSegment('\n', hangups_constants.SegmentType.LINE_BREAK)]
     segments.extend(text_to_segments(json.dumps(value, indent=2, sort_keys=True)))
     yield from bot.coro_send_message(event.conv, segments)
 

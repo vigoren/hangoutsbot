@@ -4,6 +4,9 @@ import logging
 
 import plugins
 
+import hangups_constants
+
+
 logger = logging.getLogger(__name__)
 
 gs = goslate.Goslate()
@@ -28,7 +31,7 @@ def _translate_message(bot, broadcast_list, context):
                 if _autotranslate["event_text"] != translated:
                     # mutate the original response by reference
                     response.extend([
-                        hangups.ChatMessageSegment('\n', hangups.SegmentType.LINE_BREAK),
+                        hangups.ChatMessageSegment('\n', hangups_constants.SegmentType.LINE_BREAK),
                         hangups.ChatMessageSegment('(' + translated + ')')])
 
 

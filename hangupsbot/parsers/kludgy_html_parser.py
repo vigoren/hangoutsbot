@@ -110,7 +110,7 @@ class simpleHTMLParser(HTMLParser):
             self._segments.append(
               hangups.ChatMessageSegment(
                 self._link_text,
-                hangups.SegmentType.LINK,
+                hangups_constants.SegmentType.LINK,
                 link_target=self._flags["link_target"],
                 is_bold=self._flags["bold"],
                 is_italic=self._flags["italic"],
@@ -139,7 +139,7 @@ class simpleHTMLParser(HTMLParser):
         self._segments.append(
             hangups.ChatMessageSegment(
                 "\n",
-                hangups.SegmentType.LINE_BREAK))
+                hangups_constants.SegmentType.LINE_BREAK))
 
     def segments_extend(self, text, type, forceNew=False):
         if len(self._segments) == 0 or forceNew is True:

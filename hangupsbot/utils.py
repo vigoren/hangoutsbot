@@ -2,6 +2,8 @@ import importlib, logging, unicodedata
 
 import hangups
 
+import hangups_constants
+
 from parsers import simple_parse_to_segments, segment_to_html
 
 from permamem import name_from_hangups_conversation
@@ -23,7 +25,7 @@ def text_to_segments(text):
     for line in lines[:-1]:
         if line:
             segments.append(hangups.ChatMessageSegment(line))
-        segments.append(hangups.ChatMessageSegment('\n', hangups.SegmentType.LINE_BREAK))
+        segments.append(hangups.ChatMessageSegment('\n', hangups_constants.SegmentType.LINE_BREAK))
     if lines[-1]:
         segments.append(hangups.ChatMessageSegment(lines[-1]))
 
