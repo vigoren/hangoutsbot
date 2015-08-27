@@ -1,118 +1,61 @@
 """1 to 1 mappings of hangups legacy enums, but as standard classes"""
+import inspect, logging, re, sys
+
 import hangups
 
 
-class TypingStatus:
-
-    """Typing statuses."""
-
-    TYPING = hangups.schemas.TypingStatus.TYPING
-    PAUSED = hangups.schemas.TypingStatus.PAUSED
-    STOPPED = hangups.schemas.TypingStatus.STOPPED
+logger = logging.getLogger(__name__) # logger is mostly useless, since initialised before config
 
 
-class FocusStatus:
-
-    """Focus statuses."""
-
-    FOCUSED = hangups.schemas.FocusStatus.FOCUSED
-    UNFOCUSED = hangups.schemas.FocusStatus.UNFOCUSED
+_current_module = sys.modules[__name__]
+_current_attrs = dir(_current_module)
 
 
-class FocusDevice:
+def _remap(name):
+    module_attribute_name = name[0]
+    hangups_pbname = name[1]
 
-    """Focus devices."""
+    if module_attribute_name in _current_attrs:
+        return
 
-    DESKTOP = hangups.schemas.FocusDevice.DESKTOP
-    MOBILE = hangups.schemas.FocusDevice.MOBILE
-    UNSPECIFIED = None
+    object = type('test', (), {})()
 
+    if "schemas" in dir(hangups):
+        enum = getattr(hangups.schemas, module_attribute_name)
+        filtered = enum.__members__
+    elif "hangouts_pb2" in dir(hangups):
+        # XXX: yes im totally aware of how hacky this is
+        # read in the new pb-variables and remap them to the original enum names
+        filtered = {}
+        everything = inspect.getmembers(hangups.hangouts_pb2)
+        for member_name, member_data in everything:
+            if member_name.startswith(hangups_pbname):
+                _name = member_name[len(hangups_pbname)+1:]
+                _value = getattr(hangups.hangouts_pb2, member_name)
+                filtered[_name] = _value
 
-class ConversationType:
+    if len(filtered) == 0:
+        print("nothing to map!")
 
-    """Conversation type."""
+    for _name, _value in filtered.items():
+        print("{}: attribute {} to {}".format(module_attribute_name, _name, _value))
+        setattr(object, _name, _value)
 
-    STICKY_ONE_TO_ONE = hangups.schemas.ConversationType.STICKY_ONE_TO_ONE
-    GROUP = hangups.schemas.ConversationType.GROUP
-
-
-class ClientConversationView:
-
-    """Conversation view."""
-
-    UNKNOWN_CONVERSATION_VIEW = hangups.schemas.ClientConversationView.UNKNOWN_CONVERSATION_VIEW
-    INBOX_VIEW = hangups.schemas.ClientConversationView.INBOX_VIEW
-    ARCHIVED_VIEW = hangups.schemas.ClientConversationView.ARCHIVED_VIEW
-
-
-class ClientNotificationLevel:
-
-    """Notification level."""
-
-    UNKNOWN = None
-    QUIET = hangups.schemas.ClientNotificationLevel.QUIET
-    RING = hangups.schemas.ClientNotificationLevel.RING
+    setattr(_current_module, module_attribute_name, object)
 
 
-class ClientConversationStatus:
+for mapping in [("TypingStatus", "TYPING_TYPE"),
+                ("FocusStatus", "FOCUS_TYPE"),
+                ("FocusDevice", "FOCUS_DEVICE"),
+                ("ConversationType", "CONVERSATION_TYPE"),
+                ("ClientConversationView", "CONVERSATION_VIEW"),
+                ("ClientNotificationLevel", "NOTIFICATION_LEVEL"),
+                ("ClientConversationStatus", "CONVERSATION_STATUS"),
+                ("SegmentType", "SEGMENT_TYPE"),
+                ("MembershipChangeType", "MEMBERSHIP_CHANGE_TYPE"),
+                ("ClientHangoutEventType", "HANGOUTS_EVENT_TYPE"),
+                ("OffTheRecordStatus", "OFF_THE_RECORD_STATUS"),
+                ("ClientOffTheRecordToggle", "OFF_THE_RECORD_TOGGLE"),
+                ("ActiveClientState", "ACTIVE_CLIENT_STATE")]:
 
-    """Conversation status."""
-
-    UNKNOWN_CONVERSATION_STATUS = hangups.schemas.ClientConversationStatus.UNKNOWN_CONVERSATION_STATUS
-    INVITED = hangups.schemas.ClientConversationStatus.INVITED
-    ACTIVE = hangups.schemas.ClientConversationStatus.ACTIVE
-    LEFT = hangups.schemas.ClientConversationStatus.LEFT
-
-
-class SegmentType:
-
-    """Message content segment type."""
-
-    TEXT = hangups.schemas.SegmentType.TEXT
-    LINE_BREAK = hangups.schemas.SegmentType.LINE_BREAK
-    LINK = hangups.schemas.SegmentType.LINK
-
-
-class MembershipChangeType:
-
-    """Conversation membership change type."""
-
-    JOIN = hangups.schemas.MembershipChangeType.JOIN
-    LEAVE = hangups.schemas.MembershipChangeType.LEAVE
-
-
-class ClientHangoutEventType:
-
-    """Hangout event type."""
-
-    START_HANGOUT = hangups.schemas.ClientHangoutEventType.START_HANGOUT
-    END_HANGOUT = hangups.schemas.ClientHangoutEventType.END_HANGOUT
-    JOIN_HANGOUT = hangups.schemas.ClientHangoutEventType.JOIN_HANGOUT
-    LEAVE_HANGOUT = hangups.schemas.ClientHangoutEventType.LEAVE_HANGOUT
-    HANGOUT_COMING_SOON = hangups.schemas.ClientHangoutEventType.HANGOUT_COMING_SOON
-    ONGOING_HANGOUT = hangups.schemas.ClientHangoutEventType.ONGOING_HANGOUT
-
-
-class OffTheRecordStatus:
-
-    """Off-the-record status."""
-
-    OFF_THE_RECORD = hangups.schemas.OffTheRecordStatus.OFF_THE_RECORD
-    ON_THE_RECORD = hangups.schemas.OffTheRecordStatus.ON_THE_RECORD
-
-
-class ClientOffTheRecordToggle:
-
-    """Off-the-record toggle status."""
-
-    ENABLED = hangups.schemas.ClientOffTheRecordToggle.ENABLED
-    DISABLED = hangups.schemas.ClientOffTheRecordToggle.DISABLED
-
-
-class ActiveClientState:
-
-    """Active client state."""
-
-    NO_ACTIVE_CLIENT = hangups.schemas.ActiveClientState.NO_ACTIVE_CLIENT
-    IS_ACTIVE_CLIENT = hangups.schemas.ActiveClientState.IS_ACTIVE_CLIENT
-    OTHER_CLIENT_IS_ACTIVE = hangups.schemas.ActiveClientState.OTHER_CLIENT_IS_ACTIVE
+    _remap(mapping)
