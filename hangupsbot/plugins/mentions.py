@@ -367,8 +367,12 @@ def mention(bot, event, *args):
         yield from bot.coro_send_message(event.conv, text_html)
 
 def pushbulletapi(bot, event, *args):
-    """allow users to configure pushbullet integration with api key
-        /bot pushbulletapi [<api key>|false, 0, -1]"""
+    """Allow users to configure PushBullet integration (https://www.pushbullet.com) with an api key.
+Any time you are @mentioned in a hangout the bot will alert you through the PushBullet service instead of the one on one hangout.
+If using the service fails it will fall back to using the one on one hangout.
+You can get your PushBullet api key from https://www.pushbullet.com/#settings
+Using false in the command will disable this feature.
+    /ada pushbulletapi [<api key>|false]"""
 
     # XXX: /bot config exposes all configured api keys (security risk!)
 
@@ -394,7 +398,10 @@ def pushbulletapi(bot, event, *args):
 
 
 def bemorespecific(bot, event, *args):
-    """toggle the "be more specific message" on and off permanently"""
+    """If you mention someone (with @username) in a hangout and it matches more than one person, you will receive a comment from me asking you to be more specific. To toggle this notification on or off, use:
+   /ada bemorespecific
+
+Example: You type @joe but there is a Joe Smith and a Joe Miller. To be more specific, you could change your mention to @joem in order for Joe Miller to be notified."""
     bot.initialise_memory(event.user.id_.chat_id, "user_data")
     if bot.memory.exists(['user_data', event.user.id_.chat_id, "mentionmultipleusermessage"]):
         _toggle = bot.memory.get_by_path(['user_data', event.user.id_.chat_id, "mentionmultipleusermessage"])
@@ -414,8 +421,11 @@ def bemorespecific(bot, event, *args):
 
 
 def setnickname(bot, event, *args):
-    """allow users to set a nickname for sync relay
-        /bot setnickname <nickname>"""
+    """If a user has a nickname, this enables notifications when it is mentioned in a hangout the bot is in:
+   /ada setnickname <nickname>
+
+To remove the nickname:
+   /ada setnickname"""
 
     truncatelength = 16 # What should the maximum length of the nickname be?
     minlength = 2 # What should the minimum length of the nickname be?
