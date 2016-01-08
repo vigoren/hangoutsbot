@@ -66,7 +66,21 @@ def format_current_weather(weather):
     :params weather: dictionary containing parsed forecast.
     :returns: message to the user.
     """
-    return "It is currently:<br/><b>{0}°{1}</b><br/>{2}<br/>Feels Like {3}°{4}.".format(weather['temperature'],weather['units']['temperature'],weather['summary'],weather['feelsLike'],weather['units']['temperature'])
+    weatherStrings = []    
+    if 'temperature' in weather:
+        weatherStrings.append("It is currently: <b>{0}°{1}</b>".format(weather['temperature'],weather['units']['temperature']))
+    if 'summary' in weather:
+        weatherStrings.append("<i>{0}</i>".format(weather['summary']))
+    if 'feelsLike' in weather:
+        weatherStrings.append("Feels Like: {0}°{1}".format(weather['feelsLike'],weather['units']['temperature']))
+    if 'windspeed' in weather:
+        weatherStrings.append("Wind: {0} {1} from {2}".format(weather['windspeed'], weather['units']['windSpeed'], _getWindDirection(weather['windbearing'])))
+    if 'humidity' in weather:
+        weatherStrings.append("Humidity: {0}%".format(weather['humidity']))
+    if 'pressure' in weather:
+        weatherStrings.append("Pressure: {0} {1}".format(weather['pressure'], weather['units']['pressure']))
+        
+    return "<br/>".join(weatherStrings)
 
 def lookup_address(location):
     """
@@ -126,16 +140,52 @@ def _getForcastUnits(result):
     }
     if result['flags']:
         unit = result['flags']['units']
-        if unit is not 'us':
+        if unit != 'us':
             units['temperature'] = 'C'
             units['distance'] = 'KM'
             units['percipIntensity'] = 'milimeters per hour'
             units['precipAccumulation'] = 'centimeters'
             units['windSpeed'] = 'm/s'
             units['pressure'] = 'Hectopascals'
-            if unit is 'ca':
+            if unit == 'ca':
                 units['windSpeed'] = 'km/h'
-            if unit is 'uk2':
+            if unit == 'uk2':
                 units['windSpeed'] = 'mph'
                 units['distance'] = 'Miles'
     return units
+
+def _getWindDirection(degrees):
+    directionText = "N"
+    if degrees >= 5 and degrees < 40:
+        directionText = "NNE"
+    elif degrees >= 40 and degrees < 50:
+        directionText = "NE"
+    elif degrees >= 50 and degrees < 85:
+        directionText = "ENE"
+    elif degrees >= 85 and degrees < 95:
+        directionText = "E"
+    elif degrees >= 95 and degrees < 130:
+        directionText = "ESE"
+    elif degrees >= 130 and degrees < 140:
+        directionText = "SE"
+    elif degrees >= 140 and degrees < 175:
+        directionText = "SSE"
+    elif degrees >= 175 and degrees < 185:
+        directionText = "S"
+    elif degrees >= 185 and degrees < 220:
+        directionText = "SSW"
+    elif degrees >= 220 and degrees < 230:
+        directionText = "SW"
+    elif degrees >= 230 and degrees < 265:
+        directionText = "WSW"
+    elif degrees >= 265 and degrees < 275:
+        directionText = "W"
+    elif degrees >= 275 and degrees < 310:
+        directionText = "WNW"
+    elif degrees >= 310 and degrees < 320:
+        directionText = "NW"
+    elif degrees >= 320 and degrees < 355:
+        directionText = "NNW"
+    
+    return directionText
+    
