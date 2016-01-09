@@ -40,6 +40,7 @@ def help(bot, event, cmd=None, *args):
                                 '<b><pre>{}</pre></b><br />').format( help_chat_id,
                                                                       help_conv_id ))
 
+        help_lines.append('This is a list of supported commands, /ada help <command> will show additional details about that command.<br/>')
         if len(commands_nonadmin) > 0:
             help_lines.append(_('<b>User commands:</b>'))
             help_lines.append(', '.join(sorted(commands_nonadmin)))
