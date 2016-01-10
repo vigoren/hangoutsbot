@@ -1,3 +1,8 @@
+"""
+    Plugin that calls the forecast.io API to get weather information based on a lat,lng position
+    An api key for forecast.io is required
+    Author: Dean Vigoren
+"""
 import logging
 import plugins
 import requests
@@ -87,9 +92,8 @@ def _format_forecast_weather(weather):
 
 def _lookup_address(location):
     """
-    Retrieve the coordinates of the location.
-    :params location: string argument passed by user.
-    :returns: dictionary containing latitutde and longitude.
+    Retrieve the coordinates of the location from googles geocode api.
+    Limit of 2,000 requests a day
     """
     google_map_url = 'http://maps.googleapis.com/maps/api/geocode/json'
     payload = {'address': location.replace(' ', '')}
@@ -104,9 +108,8 @@ def _lookup_address(location):
 
 def _lookup_weather(coords):
     """
-    Retrieve the current forecast at the coordinates.
-    :params coords: dictionary containing latitude and longitude.
-    :returns: dictionary containing parsed current forecast.
+    Retrieve the current forecast for the specified coordinates from forecast.io
+    Limit of 1,000 requests a day
     """
 
     forecast_io_url = 'https://api.forecast.io/forecast/{0}/{1},{2}?units=auto'.format(_internal['forecast_api_key'],coords['lat'], coords['lng'])
@@ -161,6 +164,9 @@ def _get_weather(bot,event,params):
     return {}
 
 def _get_forcast_units(result):
+    """
+    Checks to see what uni the results were passed back as and sets the display units accordingly
+    """
     units = {
         'temperature': 'F',
         'distance': 'Miles',
@@ -186,6 +192,10 @@ def _get_forcast_units(result):
     return units
 
 def _get_wind_direction(degrees):
+    """
+    Determines the direction the wind is blowing from based off the degree passed from the API
+    0 degrees is true north
+    """
     directionText = "N"
     if degrees >= 5 and degrees < 40:
         directionText = "NNE"
