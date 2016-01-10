@@ -9,62 +9,53 @@ def _initialize(bot):
     api_key = bot.get_config_option('forecast_api_key')
     if api_key:
         _internal['forecast_api_key'] = api_key
-        plugins.register_user_command(['weather'])
+        plugins.register_user_command(['weather', 'forecast'])
         plugins.register_admin_command(['setweatherlocation'])
     else:
         logger.error('WEATHER: config["forecast_api_key"] required')
 
 def setweatherlocation(bot, event, *args):
     """Sets the Lat Long default coordinates for this hangout when polling for weather data
-    /ada setWeatherLocation <lat>,<lng>
+    /ada setWeatherLocation <location>
     """
-    location = ''.join(args).strip().split(',')
+    location = ''.join(args).strip()
     if not location:
-         yield from bot.coro_send_message(event.conv_id, _('No location was specified, please specify a location.'))
+        yield from bot.coro_send_message(event.conv_id, _('No location was specified, please specify a location.'))
+    
+    location = _lookup_address(location)
+    if not location:
+        yield from bot.coro_send_message(event.conv_id, _('Unable to find the specified location.'))
+    
     if bot.memory.exists(["conv_data", event.conv.id_]):
-        bot.memory.set_by_path(["conv_data", event.conv.id_, "default_weather_location"], {'lat': location[0], 'lng': location[1]})
+        bot.memory.set_by_path(["conv_data", event.conv.id_, "default_weather_location"], {'lat': location['lat'], 'lng': location['lng']})
         bot.memory.save()
         yield from bot.coro_send_message(event.conv_id, _('This hangouts default location has been set to {}.'.format(location)))
 
 def weather(bot, event, *args):
     """Returns weather information from Forecast.io
     <b>/ada weather <location></b> Get location's current weather.
-    <b>/ada weather</b> Get the hangouts default location's weather if set. If it is not talk to a hangout admin.
+    <b>/ada weather</b> Get the hangouts default location's current weather. If the default location is not set talk to a hangout admin.
     """
-    parameters = list(args)
-
-    if not parameters:
-        location = ""
-        if bot.memory.exists(["conv_data", event.conv.id_]):
-            if(bot.memory.exists(["conv_data", event.conv.id_, "default_weather_location"])):
-                location = bot.memory.get_by_path(["conv_data", event.conv.id_, "default_weather_location"])
-
-        if location:
-            weather = lookup_weather(location)
-            if weather:
-                yield from bot.coro_send_message(event.conv_id, format_current_weather(weather))
-            else:
-                yield from bot.coro_send_message(event.conv_id, 'There was an error retrieving the weather, guess you need to look outside.')
-        else:
-            yield from bot.coro_send_message(event.conv_id, _('No default location found. Look up weather using /ada weather <b>address</b>.'))
+    weather = _get_weather(bot, event, args)
+    if weather:
+        yield from bot.coro_send_message(event.conv_id, _format_current_weather(weather))
     else:
-        address = ''.join(parameters).strip()
-        coords = lookup_address(address)
-        if coords:
-            weather = lookup_weather(coords)
-            if weather:
-                yield from bot.coro_send_message(event.conv_id, format_current_weather(weather))
-            else:
-                yield from bot.coro_send_message(event.conv_id, 'There was an error retrieving the weather, guess you need to look outside.')
-        else:
-            yield from bot.coro_send_message(event.conv_id, _('Unable to figure out where <b>%s</b> actually is.' % (parameters[0])))
-        
+        yield from bot.coro_send_message(event.conv_id, 'There was an error retrieving the weather, guess you need to look outside.')
 
-def format_current_weather(weather):
+def forecast(bot, event, *args):
+    """Returns a brief textual forecast from Forecast.io
+    <b>/ada weather <location></b> Get location's current forecast.
+    <b>/ada weather</b> Get the hangouts default location's forecast. If default location is not set talk to a hangout admin.
     """
-    Formats the current weather message to the user.
-    :params weather: dictionary containing parsed forecast.
-    :returns: message to the user.
+    weather = _get_weather(bot, event, args)
+    if weather:
+        yield from bot.coro_send_message(event.conv_id, _format_forecast_weather(weather))
+    else:
+        yield from bot.coro_send_message(event.conv_id, 'There was an error retrieving the weather, guess you need to look outside.')
+ 
+def _format_current_weather(weather):
+    """
+    Formats the current weather data for the user.
     """
     weatherStrings = []    
     if 'temperature' in weather:
@@ -74,7 +65,7 @@ def format_current_weather(weather):
     if 'feelsLike' in weather:
         weatherStrings.append("Feels Like: {0}°{1}".format(weather['feelsLike'],weather['units']['temperature']))
     if 'windspeed' in weather:
-        weatherStrings.append("Wind: {0} {1} from {2}".format(weather['windspeed'], weather['units']['windSpeed'], _getWindDirection(weather['windbearing'])))
+        weatherStrings.append("Wind: {0} {1} from {2}".format(weather['windspeed'], weather['units']['windSpeed'], _get_wind_direction(weather['windbearing'])))
     if 'humidity' in weather:
         weatherStrings.append("Humidity: {0}%".format(weather['humidity']))
     if 'pressure' in weather:
@@ -82,7 +73,19 @@ def format_current_weather(weather):
         
     return "<br/>".join(weatherStrings)
 
-def lookup_address(location):
+def _format_forecast_weather(weather):
+    """
+    Formats the forecast data for the user.
+    """
+    weatherStrings = []
+    if 'hourly' in weather:
+        weatherStrings.append("<b>Next 24 Hours</b><br/>{}". format(weather['hourly']))
+    if 'daily' in weather:
+        weatherStrings.append("<b>Next 7 Days</b><br/>{}". format(weather['daily']))
+        
+    return "<br/>".join(weatherStrings)
+
+def _lookup_address(location):
     """
     Retrieve the coordinates of the location.
     :params location: string argument passed by user.
@@ -99,7 +102,7 @@ def lookup_address(location):
 
     return coords
 
-def lookup_weather(coords):
+def _lookup_weather(coords):
     """
     Retrieve the current forecast at the coordinates.
     :params coords: dictionary containing latitude and longitude.
@@ -112,24 +115,52 @@ def lookup_weather(coords):
     logger.debug('Request status code: %i' % (r.status_code))
 
     try:
-        j = r.json()['currently']
+        j = r.json()
         current = {
-            'time' : j['time'],
-            'summary': j['summary'],
-            'temperature': j['temperature'],
-            'feelsLike': j['apparentTemperature'],
-            'units': _getForcastUnits(r.json()),
-            'humidity': int(j['humidity']*100),
-            'windspeed' : j['windSpeed'],
-            'windbearing' : j['windBearing']
+            'time' : j['currently']['time'],
+            'summary': j['currently']['summary'],
+            'temperature': j['currently']['temperature'],
+            'feelsLike': j['currently']['apparentTemperature'],
+            'units': _get_forcast_units(j),
+            'humidity': int(j['currently']['humidity']*100),
+            'windspeed' : j['currently']['windSpeed'],
+            'windbearing' : j['currently']['windBearing'],
+            'pressure' : (j['currently']['pressure']/10)
         }
+        if 'hourly' in j:
+            current['hourly'] = j['hourly']['summary']
+        if 'daily' in j:
+            current['daily'] = j['daily']['summary']
+        
     except Exception as e:
         logger.info("Forecast Error: {}".format(e))
         current = dict()
 
     return current
+
+def _get_weather(bot,event,params):
+    """ 
+    Checks memory for a default location set for the current hangout.
+    If one is not found and parameters were specified attempts to look up a location.    
+    If it finds a location it then attempts to load the weather data
+    """
+    parameters = list(params)
+    location = {}
+     
+    if not parameters:
+        if bot.memory.exists(["conv_data", event.conv.id_]):
+            if(bot.memory.exists(["conv_data", event.conv.id_, "default_weather_location"])):
+                location = bot.memory.get_by_path(["conv_data", event.conv.id_, "default_weather_location"])
+    else:
+        address = ''.join(parameters).strip()
+        location = _lookup_address(address)
     
-def _getForcastUnits(result):
+    if location:
+        return _lookup_weather(location)
+    
+    return {}
+
+def _get_forcast_units(result):
     units = {
         'temperature': 'F',
         'distance': 'Miles',
@@ -146,7 +177,7 @@ def _getForcastUnits(result):
             units['percipIntensity'] = 'milimeters per hour'
             units['precipAccumulation'] = 'centimeters'
             units['windSpeed'] = 'm/s'
-            units['pressure'] = 'Hectopascals'
+            units['pressure'] = 'kPa'
             if unit == 'ca':
                 units['windSpeed'] = 'km/h'
             if unit == 'uk2':
@@ -154,7 +185,7 @@ def _getForcastUnits(result):
                 units['distance'] = 'Miles'
     return units
 
-def _getWindDirection(degrees):
+def _get_wind_direction(degrees):
     directionText = "N"
     if degrees >= 5 and degrees < 40:
         directionText = "NNE"
