@@ -1,15 +1,12 @@
-import hangups
-import os
+import hangups, plugins, os, time, pytz, re
 from datetime import datetime, timedelta
-import time
-import pytz
 
 serverTimeZone = pytz.timezone("US/Pacific")
 hours_per_cycle = 175
 
-def _initialise(Handlers, bot=None):  
-    Handlers.register_user_command(["allcheckpoints", "allcp", "nextcp", "nextcheckpoint", "nextcycle"])
-    Handlers.register_admin_command(["settimezone", "setcity", "ihacked"])
+def _initialise(bot):  
+    plugins.register_user_command(["allcheckpoints", "allcp", "nextcp", "nextcheckpoint", "nextcycle", "mappin"])
+    plugins.register_admin_command(["settimezone", "setcity", "ihacked"])
     os.environ['TZ'] = 'US/Pacific'
     time.tzset()
 
@@ -96,6 +93,28 @@ def nextcycle(bot, event, *args):
     text = 'The first checkpoint of the next cycle is at {:%I:%M%p %Y-%m-%d}'.format(start.astimezone(tz))
     yield from bot.coro_send_message(event.conv, text)
 
+#####################
+# Maps stuff
+#####################
+
+def mappin(bot,event,*args):
+    """
+    Takes an Ingress intel link for a portal and creates a Google maps pin to that location
+    <b>/ada mappin <url></b>
+    """
+    url = ''.join(args).strip()
+    coords = url.split("pll=")
+    if not url or len(coords) != 2:
+        yield from bot.coro_send_message(event.conv, "You need to provide an intel url for a portal.")
+        return
+    res = re.match("-?[1-8]+\.[0-9]+,-?[1-8]+\.[0-9]+", coords[1])
+    if not res:
+        yield from bot.coro_send_message(event.conv, "Unable to parse the provided intel link. Make sure it is a link to a portal and try again.")
+        return
+
+    yield from bot.coro_send_message(event.conv, "https://maps.google.com/maps?q="+coords[1])
+    
+    
 #####################
 # Sojourner stuff
 #####################
