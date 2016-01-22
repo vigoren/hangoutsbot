@@ -1,7 +1,9 @@
 """
     Plugin that calls the forecast.io API to get weather information based on a lat,lng position
     An api key for forecast.io is required
-    Author: Dean Vigoren
+    
+    config.json will have to be configured as follows:
+    "forecast_api_key": "API_KEY"
 """
 import logging
 import plugins
@@ -102,7 +104,8 @@ def _lookup_address(location):
 
     try:
         coords = r.json()['results'][0]['geometry']['location']
-    except:
+    except ValueError as e:
+        logger.error("Forecast Error: {}".format(e))
         coords = {}
 
     return coords
@@ -114,9 +117,7 @@ def _lookup_weather(coords):
     """
 
     forecast_io_url = 'https://api.forecast.io/forecast/{0}/{1},{2}?units=auto'.format(_internal['forecast_api_key'],coords['lat'], coords['lng'])
-    logger.debug('Forecast.io GET %s' % (forecast_io_url))
     r = requests.get(forecast_io_url)
-    logger.debug('Request status code: %i' % (r.status_code))
 
     try:
         j = r.json()
@@ -139,8 +140,8 @@ def _lookup_weather(coords):
         if 'daily' in j:
             current['daily'] = j['daily']['summary']
         
-    except Exception as e:
-        logger.info("Forecast Error: {}".format(e))
+    except ValueError as e:
+        logger.error("Forecast Error: {}".format(e))
         current = dict()
 
     return current
