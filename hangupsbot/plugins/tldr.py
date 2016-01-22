@@ -14,6 +14,8 @@ All TLDRs can be retrieved by:
     /ada tldr
 Single TLDRs can be retrieved with:
     /ada tldr <number>
+Single TLDRs can be edited with:
+    /ada tldr edit <number> <new message>
 All TLDRs can be deleted by:
     /ada tldr clear
 Single TLDRs can be removed with:

@@ -6,6 +6,7 @@
 import logging
 import plugins
 import requests
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 _internal = {}
@@ -64,17 +65,17 @@ def _format_current_weather(weather):
     """
     weatherStrings = []    
     if 'temperature' in weather:
-        weatherStrings.append("It is currently: <b>{0}°{1}</b>".format(weather['temperature'],weather['units']['temperature']))
+        weatherStrings.append("It is currently: <b>{0}°{1}</b>".format(round(weather['temperature'],2),weather['units']['temperature']))
     if 'summary' in weather:
         weatherStrings.append("<i>{0}</i>".format(weather['summary']))
     if 'feelsLike' in weather:
-        weatherStrings.append("Feels Like: {0}°{1}".format(weather['feelsLike'],weather['units']['temperature']))
+        weatherStrings.append("Feels Like: {0}°{1}".format(round(weather['feelsLike'],2),weather['units']['temperature']))
     if 'windspeed' in weather:
-        weatherStrings.append("Wind: {0} {1} from {2}".format(weather['windspeed'], weather['units']['windSpeed'], _get_wind_direction(weather['windbearing'])))
+        weatherStrings.append("Wind: {0} {1} from {2}".format(round(weather['windspeed'],2), weather['units']['windSpeed'], _get_wind_direction(weather['windbearing'])))
     if 'humidity' in weather:
         weatherStrings.append("Humidity: {0}%".format(weather['humidity']))
     if 'pressure' in weather:
-        weatherStrings.append("Pressure: {0} {1}".format(weather['pressure'], weather['units']['pressure']))
+        weatherStrings.append("Pressure: {0} {1}".format(round(weather['pressure'],2), weather['units']['pressure']))
         
     return "<br/>".join(weatherStrings)
 
@@ -122,14 +123,17 @@ def _lookup_weather(coords):
         current = {
             'time' : j['currently']['time'],
             'summary': j['currently']['summary'],
-            'temperature': j['currently']['temperature'],
-            'feelsLike': j['currently']['apparentTemperature'],
+            'temperature': Decimal(j['currently']['temperature']),
+            'feelsLike': Decimal(j['currently']['apparentTemperature']),
             'units': _get_forcast_units(j),
             'humidity': int(j['currently']['humidity']*100),
-            'windspeed' : j['currently']['windSpeed'],
+            'windspeed' : Decimal(j['currently']['windSpeed']),
             'windbearing' : j['currently']['windBearing'],
-            'pressure' : (j['currently']['pressure']/10)
+            'pressure' : j['currently']['pressure']
         }
+        if current['units']['pressure'] == 'kPa':
+            current['pressure'] = Decimal(current['pressure']/10)
+        
         if 'hourly' in j:
             current['hourly'] = j['hourly']['summary']
         if 'daily' in j:
