@@ -8,11 +8,16 @@ def _initialise(bot):
 
 
 def tldr(bot, event, *args):
-    """Adds a short message to a list saved for the conversation using:
-    /bot tldr <message>
-    All TLDRs can be retrieved by /bot tldr, single tldr with /bot tldr <number>
-    All TLDRs can be deleted using /bot tldr clear, single tldr with /bot tldr clear <number>
-    Single TLDRs can be edited using /bot tldr edit <number> <new_message>"""
+    """TLDR adds a short message to a list saved for the conversation using:
+    /ada tldr <message>
+All TLDRs can be retrieved by:
+    /ada tldr
+Single TLDRs can be retrieved with:
+    /ada tldr <number>
+All TLDRs can be deleted by:
+    /ada tldr clear
+Single TLDRs can be removed with:
+    /ada tldr clear <number>"""
     parameters = list(args)
 
     if not bot.memory.exists(['tldr']):
