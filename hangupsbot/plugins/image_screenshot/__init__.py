@@ -29,10 +29,9 @@ def _initialise(bot):
     plugins.register_admin_command(["seturl", "clearurl"])
     try:
         _internal['browser'] = webdriver.PhantomJS(desired_capabilities=dcap,service_log_path=os.path.devnull)
-        logger.error("Browser Object Created")
     except selenium.common.exceptions.WebDriverException as e:
         _internal['browser'] = None
-        logger.error(e)
+        logger.error("PhantomJS could not be found. {}".format(e))
 
 
 @asyncio.coroutine
@@ -124,9 +123,10 @@ def screenshot(bot, event, *args):
             image_data = yield from _screencap(_internal['browser'], url, filepath)
         except Exception as e:
             yield from bot.coro_send_message(event.conv_id, "<i>error getting screenshot</i>")
-            logger.exception("screencap failed".format(url))
-            _externals["running"] = False
+            logger.exception("screencap failed".format(url))            
             return
+        finally:
+            _externals["running"] = False
             
         try:
             image_id = yield from bot._client.upload_image(image_data, filename=filename)
