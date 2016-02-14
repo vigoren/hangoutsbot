@@ -13,9 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 _externals = { "running": False }
-
 _internal = {"browser": None}
-
 
 dcap = dict(DesiredCapabilities.PHANTOMJS)
 dcap["phantomjs.page.settings.userAgent"] = (
@@ -27,12 +25,6 @@ dcap["phantomjs.page.settings.userAgent"] = (
 def _initialise(bot):
     plugins.register_user_command(["screenshot"])
     plugins.register_admin_command(["seturl", "clearurl"])
-    try:
-        _internal['browser'] = webdriver.PhantomJS(desired_capabilities=dcap,service_log_path=os.path.devnull)
-    except selenium.common.exceptions.WebDriverException as e:
-        _internal['browser'] = None
-        logger.error("PhantomJS could not be found. {}".format(e))
-
 
 @asyncio.coroutine
 def _open_file(name):
@@ -96,6 +88,13 @@ def screenshot(bot, event, *args):
         return
 
     if _internal['browser'] is None:
+        try:
+            _internal['browser'] = webdriver.PhantomJS(desired_capabilities=dcap,service_log_path=os.path.devnull)
+        except selenium.common.exceptions.WebDriverException as e:
+            _internal['browser'] = False
+            logger.error("PhantomJS could not be found. {}".format(e))
+        
+    if _internal['browser'] is False:
         yield from bot.coro_send_message(event.conv, "<i>phantomjs could not be started - is it installed?</i>")
         _externals["running"] = False
         return
@@ -123,7 +122,7 @@ def screenshot(bot, event, *args):
             image_data = yield from _screencap(_internal['browser'], url, filepath)
         except Exception as e:
             yield from bot.coro_send_message(event.conv_id, "<i>error getting screenshot</i>")
-            logger.exception("screencap failed".format(url))            
+            logger.exception("screencap failed".format(url))
             return
         finally:
             _externals["running"] = False
