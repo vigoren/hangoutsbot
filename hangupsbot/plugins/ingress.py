@@ -1,13 +1,13 @@
 import hangups, plugins, os, time, pytz, re
 from datetime import datetime, timedelta
 
-serverTimeZone = pytz.timezone("US/Pacific")
+serverTimeZone = pytz.timezone("UTC")
 hours_per_cycle = 175
 
 def _initialise(bot):  
     plugins.register_user_command(["allcheckpoints", "allcp", "nextcp", "nextcheckpoint", "nextcycle", "mappin"])
-    plugins.register_admin_command(["settimezone", "setcity", "ihacked", "startfarm", "clearfarm", "farmlocation"])
-    os.environ['TZ'] = 'US/Pacific'
+    plugins.register_admin_command(["settimezone"])
+    os.environ['TZ'] = 'UTC'
     time.tzset()
 
 def _getTimeZone(bot,event):
@@ -33,7 +33,7 @@ def settimezone(bot, event, *args):
 
 # Calculation code borrowed and adapted from https://github.com/jdanlewis/ingress-checkpoints/blob/master/calc.py
 def _getCycleStartTime():
-    t0 = datetime.strptime('2015-12-30 21', '%Y-%m-%d %H')
+    t0 = datetime.strptime('2015-12-31 5', '%Y-%m-%d %H')
     t = datetime.now()
     seconds = time.mktime(t.timetuple()) - time.mktime(t0.timetuple())
     cycles = seconds // (3600 * hours_per_cycle)
@@ -113,91 +113,4 @@ def mappin(bot,event,*args):
         return
 
     yield from bot.coro_send_message(event.conv, "https://maps.google.com/maps?q="+coords[1])
-    
-#####################
-# Farm stuff
-#####################
-
-def startfarm(bot, event, *args):
-    """
-    Starts up a farm for the hangout. Currently only 1 farm supported at a time.
-    <b>/ada startfarm</b>
-    """
-    if not bot.memory.exists(["conv_data", event.conv.id_]):
-        bot.memory.set_by_path(['conv_data', event.conv.id_], {})
-    if bot.memory.exists(["conv_data", event.conv.id_, "farm"]):
-        farm = bot.memory.get_by_path(["conv_data", event.conv.id_, "farm"])
-        if farm:
-            yield from bot.coro_send_message(event.conv, "A farm is all ready set up for this hangout, if it is over please clear it before starting a new one.")
-            return
-    bot.memory.set_by_path(["conv_data", event.conv.id_, "farm"], {'location': 'unknown', 'time': 'unknown', 'participants': [], 'notes':''})
-    bot.memory.save()
-    yield from bot.coro_send_message(event.conv, "A farm has been started, use <b><i>/ada farmlocation</i></b> to set a location<br/><b><i>/ada farmtime</i></b> to set a time<br/><b><i>/ada farmnotes</i></b> to add notes<br/><b><i>/ada joinfarm</i></b> to join up!")
-
-def farmlocation(bot, event, *args):
-    """
-    If a farm has been started this will set the location for that farm.
-    <b>/ada farmlocation <location></b>
-    """
-    # TODO: Accept lat lng, portal link or attempt to look up address (maybe?) to be able to generate a google maps link to the farm
-    if not args:
-        yield from bot.coro_send_message(event.conv, "You must supply a location to set the location....")
-        return
-    
-    if bot.memory.exists(["conv_data", event.conv.id_]):
-        if bot.memory.exists(["conv_data", event.conv.id_, "farm"]):
-            if bot.memory.exists(["conv_data", event.conv.id_, "farm", "location"]):
-                location = " ".join(args)
-                bot.memory.set_by_path(["conv_data", event.conv.id_, "farm", "location"], location)
-                bot.memory.save()
-                yield from bot.coro_send_message(event.conv, "The location for the farm has been set to {}.".format(location))
-                return
-    yield from bot.coro_send_message(event.conv, "There is not farm started to set a location for, please start a farm with /ada startfarm first.")
-    
-def farm(bot,event,*args):
-    """
-    If there is a farm this will list the details and participants.
-    <b>/ada farm</b>
-    """
-    if not bot.memory.exists(["conv_data", event.conv.id_]):
-        if(bot.memory.exists(["conv_data", event.conv.id_, "farm"])):
-            bot.coro_send_message(event.conv, "There is currently a farm set for x")
-            return
-    bot.coro_send_message(event.conv, "There is currently no farm set up or being set up.")
-    
-def clearfarm(bot, event, *args):
-    """
-    Removes the farm.
-    <b>/ada clearfarm</b>
-    """
-    if bot.memory.exists(["conv_data", event.conv.id_, "farm"]):
-        bot.memory.set_by_path(["conv_data", event.conv.id_, "farm"],{})
-        bot.memory.save()
-    yield from bot.coro_send_message(event.conv, "The farm has been removed.")
-   
-def joinfarm(bot, event, *args):
-    """
-    If there is a farm active in the hangout you will join it.
-    <b>/ada joinfarm</b>
-    """
-    
-def leavefarm(bot, event, *args):
-    """
-    If there is a farm active in the hangout you will leave it.
-    <b>/ada leavefarm</b>
-    """
-   
-#####################
-# Sojourner stuff
-#####################
-
-def ihacked(bot,event,*args):
-    if not bot.memory.exists(["user_data", event.user_id.chat_id]):
-        bot.memory.set_by_path(['user_data', event.user_id.chat_id], {})
-    if not bot.memory.exists(["user_data", event.user_id.chat_id,"sojourner"]):
-        bot.memory.set_by_path(['user_data', event.user_id.chat_id,"sojourner"], {})
-    bot.memory.set_by_path(['user_data', event.user_id.chat_id,"sojourner","last_hack_time"], time.time())
-    bot.memory.save()
-    yield from bot.coro_send_message(event.conv, "Nice work! {}".format(time.time()))
-
-
+	
