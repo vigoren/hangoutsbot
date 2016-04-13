@@ -1,12 +1,14 @@
-import hangups, plugins, os, time, pytz, re
+import hangups, plugins, logging, os, time, pytz, re
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 serverTimeZone = pytz.timezone("UTC")
 hours_per_cycle = 175
 
 def _initialise(bot):  
     plugins.register_user_command(["allcheckpoints", "allcp", "nextcp", "nextcheckpoint", "nextcycle", "mappin"])
-    plugins.register_admin_command(["settimezone"])
+    plugins.register_admin_command(["settimezone", "addpasscodehangout", "removepasscodehangout", "pc"])
     os.environ['TZ'] = 'UTC'
     time.tzset()
 
@@ -113,4 +115,57 @@ def mappin(bot,event,*args):
         return
 
     yield from bot.coro_send_message(event.conv, "https://maps.google.com/maps?q="+coords[1])
-	
+
+#####################
+# Passcode stuff
+#####################
+
+def addpasscodehangout(bot, event, *args):
+    """
+    Adds a hangout to the list of hangouts to receive passcodes
+    """
+    if not bot.memory.exists(["passcode_hangouts"]):
+        bot.memory["passcode_hangouts"] = []
+    newHo = ''.join(args).strip()
+    if not newHo:
+        yield from bot.coro_send_message(event.conv_id, _('No hangout was specified.'))
+        return
+    hos = bot.memory.get("passcode_hangouts")
+    hos.append(newHo)
+    bot.memory["passcode_hangouts"] = hos
+    bot.memory.save()
+    yield from bot.coro_send_message(event.conv_id, _('The hangout has been added to the list to recieve passcodes.'))
+    
+
+def removepasscodehangout(bot,event,*args):
+    """
+    Removes a hangout to the list of hangouts to receive passcodes
+    """
+    if not bot.memory.exists(["passcode_hangouts"]):
+        yield from bot.coro_send_message(event.conv_id, _('There are no passcode hangouts to remove.'))
+        return
+    oldHo = ''.join(args).strip()
+    if not oldHo:
+        yield from bot.coro_send_message(event.conv_id, _('No hangout was specified.'))
+        return
+    hos = bot.memory.get("passcode_hangouts")
+    if oldHo in hos:
+        hos.remove(oldHo)
+        bot.memory["passcode_hangouts"] = hos
+        bot.memory.save()
+        yield from bot.coro_send_message(event.conv_id, _('The hangout has been removed from the list to recieve passcodes.'))
+
+def pc(bot,event,*args):
+    """
+    Passes a passcode to the list of passcode hangouts
+    """
+    passcodes = ' '.join(args).strip()
+    if not passcodes:
+        yield from bot.coro_send_message(event.conv_id, _('No passcode was specified.'))
+        return
+    hos = bot.memory.get("passcode_hangouts")
+    for ho in hos:
+        yield from bot.coro_send_message(ho, passcodes)
+        logger.info("Sent the pass code '{}' to hangout {}".format(passcodes,ho))
+    
+    yield from bot.coro_send_message(event.conv_id, _('The passcode(s) have been shared.'))
