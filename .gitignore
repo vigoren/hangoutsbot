@@ -13,4 +13,4 @@ aiohttp
 
 # Prevent telesync from saving photos
 *.jpg 
-
+.idea/
