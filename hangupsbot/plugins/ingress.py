@@ -33,34 +33,32 @@ def settimezone(bot, event, *args):
 # Checkpoint stuff
 #####################
 
-# Calculation code borrowed and adapted from https://github.com/jdanlewis/ingress-checkpoints/blob/master/calc.py
-def _getCycleStartTime():
-    t0 = datetime.strptime('2015-12-31 5', '%Y-%m-%d %H')
-    t = datetime.now()
-    seconds = time.mktime(t.timetuple()) - time.mktime(t0.timetuple())
-    cycles = seconds // (3600 * hours_per_cycle)
-    start = t0 + timedelta(hours=cycles * hours_per_cycle)
-    return start
+def _getCycleData():
+    t1 = serverTimeZone.localize(datetime.utcnow())
+    t0 = serverTimeZone.localize(datetime(2015, 12, 31, 5, 0))
+    tdelta = t1 - t0
+    cycle = timedelta(hours=175)
+    cycles = tdelta // cycle
+    cycle_start = t0 + (cycles * cycle)
+    return {"start": cycle_start, "now": t1}
 
 def allcheckpoints(bot, event, *args):
     """Returns a list of every checkpoint for the current cycle. The next checkpoint will be bolded. The checkpoint times are shown for the time zone the hangout is set to."""
     tz = _getTimeZone(bot, event)
-    start = _getCycleStartTime()
-    checkpoints = map(lambda x: start + timedelta(hours=x), range(0, hours_per_cycle, 5))
+    data = _getCycleData()
+    checkpoint_times = map(lambda x: data['start'] + timedelta(hours=x), range(0, hours_per_cycle, 5))
 
     currentcpfound = False
     text = []
     text.append('All checkpoints for the current cycle:')
-    
-    for num, checkpoint in enumerate(checkpoints):
-        cp = serverTimeZone.localize(checkpoint)
-        if currentcpfound is False and checkpoint > datetime.now():
-            text.append('<b><i>Checkpoint {}</i>: {:%I:%M%p %Y-%m-%d}</b>'.format(num+1,cp.astimezone(tz)))
+
+    for num, checkpoint in enumerate(checkpoint_times):
+        if currentcpfound is False and checkpoint > data['now']:
+            text.append('<b><i>Checkpoint {}</i>: {:%I:%M%p %Y-%m-%d}</b>'.format(num + 1, checkpoint.astimezone(tz)))
             currentcpfound = True
         else:
-            text.append('<i>Checkpoint {}</i>: {:%I:%M%p %Y-%m-%d}'.format(num+1,cp.astimezone(tz)))
-        
-    
+            text.append('<i>Checkpoint {}</i>: {:%I:%M%p %Y-%m-%d}'.format(num + 1, checkpoint.astimezone(tz)))
+
     yield from bot.coro_send_message(event.conv, "<br />".join(text))
 
 def allcp(bot, event, *args):
@@ -70,17 +68,12 @@ def allcp(bot, event, *args):
 def nextcp(bot, event, *args):
     """Returns the time that the next checkpoint will occur. The checkpoint times are shown for the time zone the hangout is set to."""
     tz = _getTimeZone(bot, event)
-    start = _getCycleStartTime()
-    checkpoints = map(lambda x: start + timedelta(hours=x), range(0, hours_per_cycle, 5))
-    text = 'The next checkpoint is at '
-    
-    for num, checkpoint in enumerate(checkpoints):
-        if checkpoint > datetime.now():
-            cp = serverTimeZone.localize(checkpoint)
-            text += '{:%I:%M%p %Y-%m-%d}'.format(cp.astimezone(tz))
-            break
-    
-    yield from bot.coro_send_message(event.conv, text)
+    data = _getCycleData()
+    cdelta = data['now'] - data['start']
+    checkpoint = timedelta(hours=5)
+    checkpoints = (cdelta // checkpoint) + 1
+    checkpoint_start = data['start'] + (checkpoint * checkpoints)
+    yield from bot.coro_send_message(event.conv, "The next checkpoint is at {:%I:%M%p %Y-%m-%d}".format(checkpoint_start.astimezone(tz)))
 
 def nextcheckpoint(bot,event,*args):
     """Returns the time that the next checkpoint will occur. The checkpoint times are shown for the time zone the hangout is set to."""
@@ -89,9 +82,8 @@ def nextcheckpoint(bot,event,*args):
 def nextcycle(bot, event, *args):
     """Returns the time of the first checkpoint for the next cycle. The checkpoint times are shown for the time zone the hangout is set to."""
     tz = _getTimeZone(bot, event)
-    start = _getCycleStartTime()
-    start = start + timedelta(hours=hours_per_cycle)
-    start = serverTimeZone.localize(start)
+    data = _getCycleData()
+    start = data['start'] + timedelta(hours=hours_per_cycle)
     text = 'The first checkpoint of the next cycle is at {:%I:%M%p %Y-%m-%d}'.format(start.astimezone(tz))
     yield from bot.coro_send_message(event.conv, text)
 
