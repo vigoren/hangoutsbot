@@ -8,7 +8,7 @@ hours_per_cycle = 175
 
 def _initialise(bot):  
     plugins.register_user_command(["allcheckpoints", "allcp", "nextcp", "nextcheckpoint", "nextcycle", "mappin"])
-    plugins.register_admin_command(["settimezone", "addpasscodehangout", "removepasscodehangout", "pc"])
+    plugins.register_admin_command(["settimezone", "addpasscodehangout", "removepasscodehangout", "pc", "whois"])
     os.environ['TZ'] = 'UTC'
     time.tzset()
 
@@ -127,7 +127,6 @@ def addpasscodehangout(bot, event, *args):
     bot.memory["passcode_hangouts"] = hos
     bot.memory.save()
     yield from bot.coro_send_message(event.conv_id, _('The hangout has been added to the list to recieve passcodes.'))
-    
 
 def removepasscodehangout(bot,event,*args):
     """
@@ -161,3 +160,33 @@ def pc(bot,event,*args):
         logger.info("Sent the pass code '{}' to hangout {}".format(passcodes,ho))
     
     yield from bot.coro_send_message(event.conv_id, _('The passcode(s) have been shared.'))
+
+#####################
+# Agent stuff
+#####################
+
+def whois(bot, event, *args):
+    """
+    Attempts to look for people related to a search term
+    /ada whois <search term>
+    """
+    term = ' '.join(args).strip().lower()
+    if not term or len(term) < 3:
+        yield from bot.coro_send_message(event.conv_id, "No search term was provided or term was too short.")
+        return
+    found_users = []
+    for chat_id, user_data in bot.memory["user_data"].items():
+        curr_nick = ""
+        if "nickname" in user_data:
+            curr_nick = user_data['nickname']
+        if term in curr_nick.lower() or term in user_data['_hangups']['full_name'].lower():
+            text = "<a href='https://plus.google.com/u/0/{}/about'>{}</a>".format(user_data['_hangups']['gaia_id'], user_data['_hangups']['full_name'])
+            if curr_nick:
+                text += " aka @{}".format(curr_nick)
+            found_users.append(text)
+
+    if not found_users:
+        yield from bot.coro_send_message(event.conv_id, "Unable to find anyone that matches the search terms!")
+        return
+
+    yield from bot.coro_send_message(event.conv_id, "<br/>".join(found_users))
