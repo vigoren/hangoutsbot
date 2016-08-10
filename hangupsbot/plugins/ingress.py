@@ -7,7 +7,7 @@ serverTimeZone = pytz.timezone("UTC")
 hours_per_cycle = 175
 
 def _initialise(bot):  
-    plugins.register_user_command(["allcheckpoints", "allcp", "nextcp", "nextcheckpoint", "nextcycle", "mappin"])
+    plugins.register_user_command(["allcheckpoints", "allcp", "nextcp", "nextcheckpoint", "nextcycle", "mappin", "getdean"])
     plugins.register_admin_command(["settimezone", "addpasscodehangout", "removepasscodehangout", "pc", "whois"])
     os.environ['TZ'] = 'UTC'
     time.tzset()
@@ -28,6 +28,10 @@ def settimezone(bot, event, *args):
     bot.memory.set_by_path(["conv_data", event.conv.id_, "timezone"], timezone)
     bot.memory.save()
     yield from bot.coro_send_message(event.conv, "The time zone for this hangout has been set to {}".format(timezone))
+
+def getdean(bot, event, *args):
+    """Brings Dean, the bot master, into the chat"""
+    yield from bot._client.adduser(event.conv_id, ["117841191535067089864"])
 
 #####################
 # Checkpoint stuff
@@ -101,7 +105,7 @@ def mappin(bot,event,*args):
     if not url or len(coords) != 2:
         yield from bot.coro_send_message(event.conv, "You need to provide an intel url for a portal.")
         return
-    res = re.match("-?[1-8]+\.[0-9]+,-?[1-8]+\.[0-9]+", coords[1])
+    res = re.match("-?[1-9]+\.[0-9]+,-?[1-9]+\.[0-9]+", coords[1])
     if not res:
         yield from bot.coro_send_message(event.conv, "Unable to parse the provided intel link. Make sure it is a link to a portal and try again.")
         return
@@ -190,3 +194,8 @@ def whois(bot, event, *args):
         return
 
     yield from bot.coro_send_message(event.conv_id, "<br/>".join(found_users))
+
+#####################
+# Distance Stuff
+#####################
+
