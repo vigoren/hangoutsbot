@@ -2,7 +2,7 @@
 based on the word/image list for the image linker bot on reddit
 sauce: http://www.reddit.com/r/image_linker_bot/comments/2znbrg/image_suggestion_thread_20/
 """
-import aiohttp, io, logging, os, random, re
+import aiohttp, io, logging, os, random, re, json, ftplib, time
 
 import plugins
 
@@ -14,8 +14,8 @@ _lookup = {}
 
 
 def _initialise(bot):
-    _load_all_the_things()
-    plugins.register_admin_command(["redditmemeword"])
+    _load_triggers()
+    plugins.register_admin_command(["redditmemeword", "addredditimage", "uploadimage"])
     plugins.register_handler(_scan_for_triggers)
 
 
@@ -57,17 +57,19 @@ def _scan_for_triggers(bot, event, command):
             yield from bot.coro_send_message(event.conv.id_, None, image_id=image_id)
 
 
-def _load_all_the_things():
+def _get_a_link(trigger):
+    if trigger in _lookup:
+        return random.choice(_lookup[trigger])
+    return False
+
+def _load_triggers():
     plugin_dir = os.path.dirname(os.path.realpath(__file__))
-    source_file = os.path.join(plugin_dir, "sauce.txt")
+    source_file = os.path.join(plugin_dir, "sauce.json")
     with open(source_file) as f:
-        content = f.read().splitlines()
-    for line in content:
-        parts = line.strip("|").split('|')
-        if len(parts) == 2:
-            triggers, images = parts
-            triggers = [x.strip() for x in triggers.split(',')]
-            images = [re.search('\((.*?)\)$', x).group(1) for x in images.split(' ')]
+        data = json.load(f)
+        for group in data:
+            triggers = group["triggers"]
+            images = group["images"]
             for trigger in triggers:
                 if trigger in _lookup:
                     _lookup[trigger].extend(images)
@@ -76,7 +78,61 @@ def _load_all_the_things():
     logger.info("{} trigger(s) loaded".format(len(_lookup)))
 
 
-def _get_a_link(trigger):
-    if trigger in _lookup:
-        return random.choice(_lookup[trigger])
-    return False
+def addredditimage(bot, event, *args):
+    """
+    Adds an image to the bot for the image linker.
+     /ada addredditimage <trigger> <image url>
+    """
+    if len(args) < 2:
+        yield from bot.coro_send_message(event.conv_id, "You must supply a trigger word and a link to the image to be added.")
+        return
+    if not re.match('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', args[1]):
+        yield from bot.coro_send_message(event.conv_id, "The second argument is not a valid URL.")
+        return
+
+    triggerWord = args[0].lower()
+    imageUrl = args[1]
+
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "sauce.json"), "r+") as json_data:
+        data = json.load(json_data)
+        found = False
+        for i, group in enumerate(data):
+            if group["triggers"]:
+                for trigger in group["triggers"]:
+                    if trigger == args[0].lower():
+                        found = True
+                        break
+                if found:
+                    data[i]["images"].append(imageUrl)
+                    break
+        if not found:
+            data.append({"triggers": [triggerWord], "images": [imageUrl]})
+
+        if triggerWord in _lookup:
+            _lookup[triggerWord].extend([imageUrl])
+        else:
+            _lookup[triggerWord] = [imageUrl]
+
+        json_data.seek(0)
+        json.dump(data, json_data)
+        json_data.close()
+        yield from bot.coro_send_message(event.conv_id, "Trigger Count: {}".format(len(_lookup)))
+
+def uploadimage(bot, event, *args):
+    if not args:
+        yield from bot.coro_send_message(event.conv_id, "No image url specified.")
+        return
+    config = bot.get_config_option('image_linker_reddit')
+    if not config or not "ftp_url" in config or not "ftp_user" in config or not "ftp_pass" in config or not "upload_url_prefix" in config:
+        yield from bot.coro_send_message(event.conv_id, "Config is not set up for uploading images.")
+        return
+    image_link = args[0]
+    filename = str(int(time.time())) + "_" + os.path.basename(image_link)
+    r = yield from aiohttp.request('get', image_link)
+    raw = yield from r.read()
+    image_data = io.BytesIO(raw)
+    session = ftplib.FTP(config["ftp_url"],config["ftp_user"],config["ftp_pass"])
+    session.storbinary('STOR ' + filename, image_data)
+    image_data.close()
+    session.quit()
+    yield from bot.coro_send_message(event.conv_id, "Link: {}{}".format(config["upload_url_prefix"],filename))

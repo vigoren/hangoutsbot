@@ -229,6 +229,7 @@ def dist(bot, event, *args):
     """
     yield from distance(bot, event, *args)
 
+
 def distance(bot, event, *args):
     """
     Calculates the distance in KM between 2 portals by using the intel links to those portals. Will also give the minimum requirements to make the link.
@@ -258,6 +259,7 @@ def distance(bot, event, *args):
 
     yield from bot.coro_send_message(event.conv_id, "The portals are <b>{0:.2f} km</b> apart.<br/>{1}".format(d/1000, linkReq))
 
+
 def _getCoordsFromUrl(url):
     coords = url.split("pll=")
     if len(coords) != 2:
@@ -266,6 +268,7 @@ def _getCoordsFromUrl(url):
     if not latlng:
         return False
     return coords[1].split(",")
+
 
 def _getLinkRequirements(distance):
     minPortalLevel = math.ceil(math.pow(distance/160,1/4))
@@ -295,7 +298,8 @@ def _getLinkRequirements(distance):
             mods = "2 Very Rare Link Amps"
 
         result += "<br/><b>Level 5 portal</b> with {}.".format(mods)
-
+    if minPortalLevel > 5 and distance <= (l5Max * 10.5):
+        result += _portalMods2People(distance, 6, l6Max)
     if minPortalLevel > 6 and distance <= (l6Max * 10.5):
         result += _portalMods2People(distance, 6, l6Max)
     if minPortalLevel > 7 and distance <= (l7Max * 10.5):
@@ -306,6 +310,7 @@ def _getLinkRequirements(distance):
         result += "Portals are too far apart to link together."
 
     return result
+
 
 def _portalMods2People(distance, portalLevel, maxDistance):
     mods = ""
@@ -339,3 +344,4 @@ def _portalMods2People(distance, portalLevel, maxDistance):
         portalLevel = 8
 
     return "<br/><b>Level {} portal</b> with {}.".format(portalLevel, mods)
+
