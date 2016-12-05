@@ -22,7 +22,7 @@ class Cleverbot:
     """
     HOST = "www.cleverbot.com"
     PROTOCOL = "http://"
-    RESOURCE = "/webservicemin"
+    RESOURCE = "/webservicemin?uc=321"
     API_URL = PROTOCOL + HOST + RESOURCE
 
     headers = {
@@ -207,7 +207,7 @@ class Cleverbot:
 
         # Add the token to the data
         payload = payload.encode('utf-8')
-        full_url = self.API_URL + "?" + urllib.parse.urlencode(query_string)
+        full_url = self.API_URL + "&" + urllib.parse.urlencode(query_string)
         req = urllib2.Request(full_url, payload, self.headers)
 
         # POST the data to Cleverbot's API

@@ -122,7 +122,7 @@ def mappin(bot, event, *args):
     if not url or len(coords) != 2:
         yield from bot.coro_send_message(event.conv, "You need to provide an intel url for a portal.")
         return
-    res = re.match("-?[1-9]+\.[0-9]+,-?[1-9]+\.[0-9]+", coords[1])
+    res = re.match("-?[0-9]+\.[0-9]+,-?[0-9]+\.[0-9]+", coords[1])
     if not res:
         yield from bot.coro_send_message(event.conv,"Unable to parse the provided intel link. Make sure it is a link to a portal and try again.")
         return
@@ -264,7 +264,7 @@ def _getCoordsFromUrl(url):
     coords = url.split("pll=")
     if len(coords) != 2:
         return False
-    latlng = re.match("-?[1-9]+\.[0-9]+,-?[1-9]+\.[0-9]+", coords[1])
+    latlng = re.match("-?[0-9]+\.[0-9]+,-?[0-9]+\.[0-9]+", coords[1])
     if not latlng:
         return False
     return coords[1].split(",")
@@ -298,8 +298,6 @@ def _getLinkRequirements(distance):
             mods = "2 Very Rare Link Amps"
 
         result += "<br/><b>Level 5 portal</b> with {}.".format(mods)
-    if minPortalLevel > 5 and distance <= (l5Max * 10.5):
-        result += _portalMods2People(distance, 6, l6Max)
     if minPortalLevel > 6 and distance <= (l6Max * 10.5):
         result += _portalMods2People(distance, 6, l6Max)
     if minPortalLevel > 7 and distance <= (l7Max * 10.5):
