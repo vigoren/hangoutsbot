@@ -45,6 +45,8 @@ def _call_youtube_api(api, parameters, next_page_key = None):
 
         if 'nextPageToken' in j:
             videos = videos + _call_youtube_api(api, parameters, j['nextPageToken'])
+        if 'error' in j:
+            logger.error("Error with the youtube API: {}".format(j['error']['message']))
 
     except Exception as e:
         logger.error("There was an issue communicating with the Google Youtube API. {}".format(e))

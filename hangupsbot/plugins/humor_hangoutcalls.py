@@ -14,7 +14,7 @@ def on_hangout_call(bot, event, command):
         if lastcall:
             lastcaller = lastcall["caller"]
             since = int(time.time() - lastcall["timestamp"])
-            image_id = yield from _getOnyxCallerImageId(bot,event)
+            image_id = yield from _getOnyxCallerImageId(bot,since)
 
             if since < 120:
                 humantime = "{} seconds".format(since)
@@ -33,7 +33,7 @@ def on_hangout_call(bot, event, command):
             else:
                 """subsequent calls for a GROUP"""
                 yield from bot.coro_send_message(event.conv_id,
-                    _("Badge earned!<br/>It's been <b>{}</b> since the last call. The last caller was <i>{}</i>.").format(humantime, lastcaller),image_id=image_id)
+                    _("It's been <b>{}</b> since the last call. The last caller was <i>{}</i>. They earned a nice shiny badge!").format(humantime, lastcaller),image_id=image_id)
 
         else:
             """first ever call for any conversation"""
@@ -42,16 +42,23 @@ def on_hangout_call(bot, event, command):
 
         bot.conversation_memory_set(event.conv_id, "lastcall", { "caller": event.user.full_name, "timestamp": time.time() })
 
-def _getOnyxCallerImageId(bot,event):
-    if bot.memory.exists(["conv_data", event.conv.id_, "onyx_call_image_id"]):
-        return bot.memory.get_by_path(["conv_data", event.conv.id_, "onyx_call_image_id"])
-    else:
-        filename = os.path.basename("https://edmontonresistance.com/image/onyx-video-caller.jpg")
-        r = yield from aiohttp.request('get', "https://edmontonresistance.com/image/onyx-video-caller.jpg")
-        raw = yield from r.read()
-        image_data = io.BytesIO(raw)
-        image_id = yield from bot._client.upload_image(image_data, filename=filename)
-        bot.memory.set_by_path(["conv_data", event.conv.id_, "onyx_call_image_id"], image_id)
-        bot.memory.save()
-        return image_id
+def _getOnyxCallerImageId(bot, time):
+    medal = _chooseImageMedal(time)
+    filename = os.path.basename("https://edmontonresistance.com/image/{}-video-caller.png".format(medal))
+    r = yield from aiohttp.request('get', "https://edmontonresistance.com/image/{}-video-caller.png".format(medal))
+    raw = yield from r.read()
+    image_data = io.BytesIO(raw)
+    image_id = yield from bot._client.upload_image(image_data, filename=filename)
+    return image_id
 
+def _chooseImageMedal(time):
+    if time < 864000:
+        return "bronze"
+    elif time < 1728000:
+        return "silver"
+    elif time < 7776000:
+        return "gold"
+    elif time < 129600000:
+        return "plat"
+    else:
+        return "onyx"
