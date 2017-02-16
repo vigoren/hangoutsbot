@@ -20,9 +20,9 @@ class Cleverbot:
     """
     Wrapper over the Cleverbot API.
     """
-    HOST = "www.cleverbot.com"
+    HOST = "www.boibot.com"
     PROTOCOL = "http://"
-    RESOURCE = "/webservicemin?uc=321"
+    RESOURCE = "/webservicemin?uc=777&botapi=see%20www.cleverbot.com%2Fapis&t=18205"
     API_URL = PROTOCOL + HOST + RESOURCE
 
     headers = {
@@ -105,7 +105,7 @@ class Cleverbot:
         if not question:
             return
 
-        if not question.endswith(("!", ",", ".", ")", "%", "*", "?")):
+        if not question.endswith(("!", ",", ".", ")", "%", "*")):
             # end a sentence with a full stop
             question += "."
 
@@ -117,9 +117,8 @@ class Cleverbot:
         # Connect to Cleverbot's API and remember the response
         try:
             self.resp = self._send()
-        except urllib2.HTTPError as e:
+        except urllib2.HTTPError:
             # request failed. returning empty string
-            logger.info("HTTP Error: {}".format(e.code))
             return str()
 
         # Add the current question to the conversation log
@@ -134,10 +133,6 @@ class Cleverbot:
         # Add Cleverbot's reply to the conversation log
         self.conversation.append(parsed['answer'])
         self.lastanswer = parsed['answer']
-
-        # Only need to store the last 8 messages
-        while len(self.conversation) > 8:
-            del self.conversation[0]
 
         return parsed['answer']
 
@@ -207,13 +202,14 @@ class Cleverbot:
 
         # Add the token to the data
         payload = payload.encode('utf-8')
-        full_url = self.API_URL + "&" + urllib.parse.urlencode(query_string)
+        full_url = self.API_URL + "?" + urllib.parse.urlencode(query_string)
+        logger.debug(payload)
+        logger.debug(full_url)
         req = urllib2.Request(full_url, payload, self.headers)
 
         # POST the data to Cleverbot's API
         conn = urllib2.urlopen(req)
         resp = conn.read()
-
 
         # Return Cleverbot's response
         return resp

@@ -27,21 +27,10 @@ class TelegramBot(telepot.async.Bot):
             except Exception as e:
                 raise telepot.TelegramError("Couldn't initialize telesync", 10)
 
-            # Setup bot.id, bot.name and bot.username fields
-            orig_loop = asyncio.get_event_loop()
-            temp_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(temp_loop)
-            _bot_data = temp_loop.run_until_complete(self.getMe())
-            asyncio.set_event_loop(orig_loop)
-            if not temp_loop.is_closed():
-                temp_loop.close()
-
-            self.id = _bot_data['id']
-            self.name = _bot_data['first_name']
-            self.username = _bot_data['username']
-
-            logger.info('[TELESYNC]Telegram bot info: id: {bot_id}, name: {bot_name}, username: {bot_username}'.format(
-                bot_id=self.id, bot_name=self.name, bot_username=self.username))
+            if "bot_name" in hangupsbot.config.get_by_path(["telesync"]):
+                self.name = hangupsbot.config.get_by_path(["telesync"])["bot_name"]
+            else:
+                self.name = "bot"
 
             self.commands = {}
             self.onMessageCallback = TelegramBot.on_message
@@ -54,6 +43,17 @@ class TelegramBot(telepot.async.Bot):
             self.ho_bot = hangupsbot
         else:
             logger.info('telesync disabled in config.json')
+
+    @asyncio.coroutine
+    def setup_bot_info(self):
+        """Setup bot.id, bot.name and bot.username fields"""
+        _bot_data = yield from self.getMe()
+        self.id = _bot_data['id']
+        self.name = _bot_data['first_name']
+        self.username = _bot_data['username']
+        logger.info('[TELESYNC]Telegram bot info: id: {bot_id}, name: {bot_name}, username: {bot_username}'.format(
+            bot_id=self.id, bot_name=self.name, bot_username=self.username))
+
 
     def add_command(self, cmd, func):
         self.commands[cmd] = func
@@ -249,7 +249,8 @@ def tg_util_sync_get_user_name(msg, chat_action='from'):
     profile_dict = tg_bot.ho_bot.memory.get_by_path(['profilesync'])['tg2ho']
     username = TelegramBot.get_username(msg, chat_action=chat_action)
     logger.info("message from: {}".format(msg['from']['id']))
-    if str(msg['from']['id']) in profile_dict:
+    if str(msg['from']['id']) in profile_dict \
+            and "user_gplus" in profile_dict[str(msg['from']['id'])]:
         # logger.info("message from: {}".format(msg['from']['id']))
         user_html = profile_dict[str(msg['from']['id'])]['user_text']
     else:
@@ -269,6 +270,27 @@ def tg_on_message(tg_bot, tg_chat_id, msg):
         text = "<b>{uname}</b>{chat_title}: {text}".format(uname=tg_util_sync_get_user_name(msg),
                                                            chat_title=chat_title,
                                                            text=msg['text'])
+
+        if 'sync_reply_to' in config:
+            if config['sync_reply_to']:
+                if 'reply_to_message' in msg:
+                    content_type, chat_type, chat_id = telepot.glance(msg['reply_to_message'])
+                    if msg['reply_to_message']['from']['first_name'].lower() == tg_bot.name.lower():
+                        r_text = msg['reply_to_message']['text'].split(':') if 'text' in msg[
+                            'reply_to_message'] else content_type
+                        r2_user = r_text[0]
+                    else:
+                        r_text = ['', msg['reply_to_message']['text']] if 'text' in msg[
+                            'reply_to_message'] else content_type
+                        r2_user = tg_util_sync_get_user_name(msg['reply_to_message'])
+                    if content_type == 'text':
+                        r2_text = r_text[1]
+                        r2_text = r2_text if len(r2_text) < 30 else r2_text[0:30] + "..."
+                    else:
+                        r2_text = content_type
+                    text = "| <i><b>{r2uname}</b></i>:\n| <i>{r2text}</i>\n{newtext}".format(r2uname=r2_user,
+                                                                                             r2text=r2_text,
+                                                                                             newtext=text)
 
         ho_conv_id = tg2ho_dict[str(tg_chat_id)]
         yield from tg_bot.ho_bot.coro_send_message(ho_conv_id, text)
@@ -585,6 +607,14 @@ def tg_command_tldr(bot, chat_id, args):
             yield from bot.sendMessage(chat_id, text, parse_mode='HTML')
         except KeyError as ke:
             yield from bot.sendMessage(chat_id, "TLDR plugin is not active. KeyError: {e}".format(e=ke))
+    elif str(chat_id) not in tg2ho_dict:
+        ho_conv_id = str(chat_id)
+        tldr_args = {'params': params, 'conv_id': ho_conv_id}
+        try:
+            text = bot.ho_bot.call_shared("plugin_tldr_shared", bot.ho_bot, tldr_args)
+            yield from bot.sendMessage(chat_id, text, parse_mode='HTML')
+        except KeyError as ke:
+            yield from bot.sendMessage(chat_id, "TLDR plugin is not active. KeyError: {e}".format(e=ke))
 
 
 @asyncio.coroutine
@@ -671,6 +701,7 @@ def _initialise(bot):
                                               'enable_sticker_sync' : True,
                                               'sync_chat_titles' : True,
                                               'sync_join_messages' : True,
+                                              'sync_reply_to' : True,
                                               'be_quiet': False})
 
     bot.config.save()
@@ -707,6 +738,7 @@ def _initialise(bot):
         loop = asyncio.get_event_loop()
         # run telegram bot
         loop.create_task(tg_bot.message_loop())
+        loop.create_task(tg_bot.setup_bot_info())
 
 
 @command.register(admin=False)
@@ -739,8 +771,6 @@ def syncprofile(bot, event, *args):
             new_mem = {'tg2ho': tg2ho_dict, 'ho2tg': ho2tg_dict}
             bot.memory.set_by_path(['profilesync'], new_mem)
             yield from bot.coro_send_message(event.conv_id, "Succsesfully set up profile sync.")
-            yield from bot.coro_send_message(event.conv_id,
-                                             "Syncing ho: {} with tg: {}".format(event.user_id.chat_id, ho2tg_dict))
         else:
             yield from bot.coro_send_message(event.conv_id,
                                              "You have to execute following command from telegram first:")
