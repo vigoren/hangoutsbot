@@ -19,6 +19,8 @@ def _initialize(bot):
         _internal['forecast_api_key'] = api_key
         plugins.register_user_command(['weather', 'forecast'])
         plugins.register_admin_command(['setweatherlocation'])
+        bot.register_shared("plugin_forecast_weather", weather_shared)
+        bot.register_shared("plugin_forecast_forecast", forecast_shared)
     else:
         logger.error('WEATHER: config["forecast_api_key"] required')
 
@@ -43,12 +45,42 @@ def setweatherlocation(bot, event, *args):
     bot.memory.save()
     yield from bot.coro_send_message(event.conv_id, _('This hangouts default location has been set to {}.'.format(location)))
 
+def weather_shared(bot, args):
+    if not isinstance(args, dict):
+        raise TypeError("args must be a dictionary")
+
+    if 'params' not in args:
+        raise KeyError("'params' key missing in args")
+
+    if 'conv_id' not in args:
+        raise KeyError("'conv_id' key missing in args")
+
+    params = args['params']
+    conv_id = args['conv_id']
+
+    return _format_current_weather(_get_weather(bot, conv_id, params))
+
+def forecast_shared(bot, args):
+    if not isinstance(args, dict):
+        raise TypeError("args must be a dictionary")
+
+    if 'params' not in args:
+        raise KeyError("'params' key missing in args")
+
+    if 'conv_id' not in args:
+        raise KeyError("'conv_id' key missing in args")
+
+    params = args['params']
+    conv_id = args['conv_id']
+
+    return _format_forecast_weather(_get_weather(bot, conv_id, params))
+
 def weather(bot, event, *args):
     """Returns weather information from darksky.net
     <b>/bot weather <location></b> Get location's current weather.
     <b>/bot weather</b> Get the hangouts default location's current weather. If the default location is not set talk to a hangout admin.
     """
-    weather = _get_weather(bot, event, args)
+    weather = _get_weather(bot, event.conv_id, args)
     if weather:
         yield from bot.coro_send_message(event.conv_id, _format_current_weather(weather))
     else:
@@ -59,7 +91,7 @@ def forecast(bot, event, *args):
     <b>/bot weather <location></b> Get location's current forecast.
     <b>/bot weather</b> Get the hangouts default location's forecast. If default location is not set talk to a hangout admin.
     """
-    weather = _get_weather(bot, event, args)
+    weather = _get_weather(bot, event.conv_id, args)
     if weather:
         yield from bot.coro_send_message(event.conv_id, _format_forecast_weather(weather))
     else:
@@ -83,7 +115,7 @@ def _format_current_weather(weather):
     if 'pressure' in weather:
         weatherStrings.append("Pressure: {0} {1}".format(round(weather['pressure'],2), weather['units']['pressure']))
         
-    return "<br/>".join(weatherStrings)
+    return "\n".join(weatherStrings)
 
 def _format_forecast_weather(weather):
     """
@@ -91,11 +123,11 @@ def _format_forecast_weather(weather):
     """
     weatherStrings = []
     if 'hourly' in weather:
-        weatherStrings.append("<b>Next 24 Hours</b><br/>{}". format(weather['hourly']))
+        weatherStrings.append("<b>Next 24 Hours</b>\n{}". format(weather['hourly']))
     if 'daily' in weather:
-        weatherStrings.append("<b>Next 7 Days</b><br/>{}". format(weather['daily']))
+        weatherStrings.append("<b>Next 7 Days</b>\n{}". format(weather['daily']))
         
-    return "<br/>".join(weatherStrings)
+    return "\n".join(weatherStrings)
 
 def _lookup_address(location):
     """
@@ -159,7 +191,7 @@ def _lookup_weather(coords):
 
     return current
 
-def _get_weather(bot,event,params):
+def _get_weather(bot,conv_id,params):
     """ 
     Checks memory for a default location set for the current hangout.
     If one is not found and parameters were specified attempts to look up a location.    
@@ -169,9 +201,9 @@ def _get_weather(bot,event,params):
     location = {}
      
     if not parameters:
-        if bot.memory.exists(["conv_data", event.conv.id_]):
-            if(bot.memory.exists(["conv_data", event.conv.id_, "default_weather_location"])):
-                location = bot.memory.get_by_path(["conv_data", event.conv.id_, "default_weather_location"])
+        if bot.memory.exists(["conv_data", conv_id]):
+            if(bot.memory.exists(["conv_data", conv_id, "default_weather_location"])):
+                location = bot.memory.get_by_path(["conv_data", conv_id, "default_weather_location"])
     else:
         address = ''.join(parameters).strip()
         location = _lookup_address(address)

@@ -17,6 +17,7 @@ def _initialise(bot):
     _load_triggers()
     plugins.register_admin_command(["redditmemeword", "addredditimage", "uploadimage"])
     plugins.register_handler(_scan_for_triggers)
+    bot.register_shared("plugin_image_linker_reddit_shared", tldr_shared)
 
 
 def redditmemeword(bot, event, *args):
@@ -26,8 +27,24 @@ def redditmemeword(bot, event, *args):
         image_link = _get_a_link(args[0])
     yield from bot.coro_send_message(event.conv_id, "this one? {}".format(image_link))
 
+def scan_shared(bot, args):
+    if not isinstance(args, dict):
+        raise TypeError("args must be a dictionary")
 
-def _scan_for_triggers(bot, event, command):
+    if 'params' not in args:
+        raise KeyError("'params' key missing in args")
+
+    if 'conv_id' not in args:
+        raise KeyError("'conv_id' key missing in args")
+
+    params = args['params']
+    conv_id = args['conv_id']
+
+    return_data = _scan(bot, conv_id, params)
+
+    return return_data
+
+def _scan(bot, conv_id, args):
     limit = 3
     count = 0
     lctext = event.text.lower()
@@ -40,20 +57,25 @@ def _scan_for_triggers(bot, event, command):
             if count >= limit:
                 break
 
-    image_links = list(set(image_links)) # make unique
-
+    image_links = list(set(image_links))  # make unique
     if len(image_links) > 0:
         for image_link in image_links:
             if "gfycat.com/" in image_link:
-                r = yield from aiohttp.request('get', image_link)
-                raw = yield from r.read()
+                r = aiohttp.request('get', image_link)
+                raw = r.read()
                 image_link = re.search("href=\"(.*?)\">GIF</a>", str(raw, 'utf-8')).group(1)
             filename = os.path.basename(image_link)
-            r = yield from aiohttp.request('get', image_link)
-            raw = yield from r.read()
+            r = aiohttp.request('get', image_link)
+            raw = r.read()
             image_data = io.BytesIO(raw)
             logger.debug("uploading: {}".format(filename))
-            image_id = yield from bot._client.upload_image(image_data, filename=filename)
+            image_id = bot._client.upload_image(image_data, filename=filename)
+            return image_id
+    return  None
+
+def _scan_for_triggers(bot, event, command):
+    image_id = _scan(bot, event.conv_id, command)
+    if image_id is not None:
             yield from bot.coro_send_message(event.conv.id_, None, image_id=image_id)
 
 
